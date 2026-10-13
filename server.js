@@ -1,6 +1,5 @@
 require('dotenv').config();
 
-
 const path = require('path');
 const express = require('express');
 const http = require('http');
@@ -15,6 +14,7 @@ const takeGems = require('./actions/takeGems');
 const buyCard = require('./actions/buyCard');
 const reserveCard = require('./actions/reserveCard');
 const nextTurn = require('./actions/nextTurn');
+const app = express();
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -31,7 +31,6 @@ function shuffle(array) {
     return array;
 }
 
-const app = express();
 app.use(cors());
 
 app.get('/', (req, res) => res.send('🟢 Splendor Server: Online'));
@@ -127,31 +126,6 @@ io.on('connection', (socket) => {
             }
         }
         console.log(`❌ [เช็กเกมค้าง] ไม่พบเกมค้างของ ${playerName}`);
-    });
-
-    // 🌟 ระบบสูตรโกงสำหรับนักพัฒนา (ลบทิ้งก่อนขึ้นระบบจริง)
-    socket.on('devCheat', ({ roomId, playerName, cheatType }) => {
-        const room = gameRooms[roomId];
-        if (!room) return;
-        const player = room.players.find(p => p.name === playerName);
-        if (!player) return;
-
-        if (cheatType === 'testNoble') {
-            // เสกโบนัสการ์ดให้สีละ 4 ใบ (เกินพอสำหรับขุนนางทุกตัว)
-            player.bonuses = { diamond: 4, sapphire: 4, emerald: 4, ruby: 4, onyx: 4 };
-            // เสกเหรียญให้ด้วย จะได้กดซื้อการ์ดเพื่อทริกเกอร์ขุนนางได้เลย
-            player.tokens = { diamond: 5, sapphire: 5, emerald: 5, ruby: 5, onyx: 5, gold: 5 };
-            console.log(`🛠️ [DEV] เสกโบนัสเตรียมรับขุนนางให้ ${playerName}`);
-        }
-        else if (cheatType === 'testEndgame') {
-            // เสกแต้มให้ 14 คะแนน (ซื้อการ์ดอีกใบเดียวจบเกม)
-            player.score = 14;
-            player.tokens = { diamond: 7, sapphire: 7, emerald: 7, ruby: 7, onyx: 7, gold: 5 };
-            console.log(`🛠️ [DEV] เสกแต้ม 14 คะแนนให้ ${playerName}`);
-        }
-
-        // สั่งอัปเดตกระดานทุกคนทันที
-        io.to(roomId).emit('updateBoard', room);
     });
 
     socket.on('joinRoom', ({ roomId, playerName }) => {
