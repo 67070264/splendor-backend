@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าร่วมห้อง</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="page">
+
+        <!-- จุดด้านบนซ้าย -->
+        <div class="dots top-left">
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+            <span class="purple"></span>
+            <span class="yellow"></span>
+        </div>
+
+        <!-- จุดด้านบนขวา -->
+        <div class="dots top-right">
+            <span class="orange"></span>
+            <span class="yellow"></span>
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+        </div>
+
+        <!-- เพชรด้านซ้าย -->
+        <div class="side-dots left-dots">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+        </div>
+
+        <!-- เพชรด้านขวา -->
+        <div class="side-dots right-dots">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+            <img src="diamond.png" alt="diamond">
+        </div>
+
+        <!-- กล่องหลัก -->
+        <div class="main-box">
+
+            <div class="room-box">
+
+                <!-- หัวข้อ -->
+                <div class="title-dots">
+                    <span class="blue"></span>
+                    <span class="purple"></span>
+                    <span class="red"></span>
+                </div>
+
+                <h1>เข้าร่วมห้อง</h1>
+
+                <!-- ปุ่มสร้างห้อง -->
+                <button class="create-room" id="createRoomBtn">
+                    <span class="button-dot red"></span>
+                    <span class="button-dot green"></span>
+                    + สร้างห้อง
+                    <span class="button-dot yellow"></span>
+                    <span class="button-dot blue"></span>
+                </button>
+
+                <!-- ช่องค้นหา -->
+                <div class="search-box">
+                    <span class="search-icon">⌕</span>
+                    <input type="text" id="searchRoom" placeholder="ค้นหารหัสห้อง">
+                </div>
+
+                <!-- หัวตาราง -->
+                <div class="room-header">
+                    <div>รหัสห้อง</div>
+                    <div>จำนวนผู้เล่น</div>
+                    <div></div>
+                </div>
+
+                <!-- รายการห้อง (UI โล่งไว้รอระบบออนไลน์หลังบ้าน) -->
+                <div class="room-list" id="roomList">
+                    <div class="no-rooms">ยังไม่มีห้องที่เปิดอยู่</div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Logout -->
+        <div class="logout">
+            <div class="logout-text">LOGOUT</div>
+            <button id="logoutBtn">←</button>
+        </div>
+
+        <!-- จุดด้านล่าง -->
+        <div class="bottom-page-dots">
+            <span class="red"></span>
+            <span class="green"></span>
+            <span class="blue"></span>
+            <span class="yellow"></span>
+            <span class="white"></span>
+            <span class="purple"></span>
+            <span class="orange"></span>
+            <span class="red"></span>
+            <span class="green"></span>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>

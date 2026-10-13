@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="th">
+    
+
+<head>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>สร้างห้อง</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="page">
+
+        <!-- จุดด้านบนซ้าย -->
+        <div class="dots top-left">
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+            <span class="purple"></span>
+            <span class="yellow"></span>
+        </div>
+
+        <!-- จุดด้านบนขวา -->
+        <div class="dots top-right">
+            <span class="orange"></span>
+            <span class="yellow"></span>
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+        </div>
+
+        <!-- เพชรด้านซ้าย -->
+        <div class="side-dots left-dots">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+        </div>
+
+        <!-- เพชรด้านขวา -->
+        <div class="side-dots right-dots">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+        </div>
+
+        <!-- กล่องหลัก -->
+        <div class="main-box">
+
+            <div class="room-box create-room-container">
+
+                <!-- หัวข้อ -->
+                <h1>สร้างห้อง</h1>
+                <p class="subtitle">จำนวนผู้เล่น</p>
+
+                <!-- ตัวเลือกจำนวนผู้เล่น -->
+                <div class="player-selection">
+                    
+                    <div class="player-card">
+                        <span class="num">2</span>
+                        <span class="label">player</span>
+                    </div>
+
+                    <div class="player-card">
+                        <span class="num">3</span>
+                        <span class="label">player</span>
+                    </div>
+
+                    <!-- การ์ดที่ถูกเลือก (active) -->
+                    <div class="player-card active">
+                        <span class="num">4</span>
+                        <span class="label">player</span>
+                    </div>
+
+                </div>
+
+                <!-- ปุ่มเริ่มสร้างห้อง -->
+                <button class="start-btn">
+                    เริ่มสร้างห้อง
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- จุดด้านล่าง -->
+        <div class="bottom-page-dots">
+            <span class="red"></span>
+            <span class="green"></span>
+            <span class="blue"></span>
+            <span class="yellow"></span>
+            <span class="white"></span>
+            <span class="purple"></span>
+            <span class="orange"></span>
+            <span class="red"></span>
+            <span class="green"></span>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>

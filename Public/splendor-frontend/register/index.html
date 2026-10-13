@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สร้างบัญชี</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="page">
+
+        <!-- จุดด้านบนซ้าย -->
+        <div class="dots top-left">
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+            <span class="purple"></span>
+            <span class="yellow"></span>
+        </div>
+
+        <!-- จุดด้านบนขวา -->
+        <div class="dots top-right">
+            <span class="orange"></span>
+            <span class="yellow"></span>
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+        </div>
+        <div class="side-dots left-dots">
+
+            <!-- ใส่รูปเพชรตรง src -->
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+
+        </div>
+
+
+        <!-- =========================
+             เพชรด้านขวา
+             ========================= -->
+
+        <div class="side-dots right-dots">
+
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+
+        </div>
+
+        <!-- กล่องหลัก -->
+        <div class="main-box">
+            <div class="login-box">
+                <div class="login-content">
+
+                    <!-- จุด 3 สีด้านบน -->
+                    <div class="title-dots">
+                        <span class="blue"></span>
+                        <span class="purple"></span>
+                        <span class="red"></span>
+                    </div>
+
+                    <!-- หัวข้อ -->
+                    <h1>สร้างบัญชีของคุณ</h1>
+
+                    <!-- Form สมัครสมาชิก -->
+                    <form id="registerForm">
+
+                        <label for="username">ชื่อผู้ใช้</label>
+                        <input type="text" id="username" name="username">
+                        <small class="error-message" id="usernameError"></small>
+
+                        <label for="email">อีเมล</label>
+                        <input type="text" id="email" name="email">
+                        <small class="error-message" id="emailError"></small>
+
+                        <label for="password">รหัสผ่าน</label>
+                        <input type="password" id="password" name="password">
+                        <small class="error-message" id="passwordError"></small>
+
+                        <label for="confirmPassword">ยืนยันรหัสผ่าน</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword">
+                        <small class="error-message" id="confirmPasswordError"></small>
+
+                        <button type="submit">
+                            สมัครสมาชิก
+                            <span class="button-dot red"></span>
+                            <span class="button-dot green"></span>
+                            <span class="button-dot yellow"></span>
+                            <span class="button-dot blue"></span>
+                        </button>
+
+                    </form>
+
+                    <!-- จุดใต้ปุ่ม -->
+                    <div class="bottom-dots">
+                        <span class="red"></span>
+                        <span class="green"></span>
+                        <span class="blue"></span>
+                    </div>
+
+                    <!-- กลับไปหน้า Login -->
+                    <a href="../login/index.html" class="register">
+                        มีบัญชีอยู่แล้ว? เข้าสู่ระบบ
+                    </a>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- จุดด้านล่าง -->
+        <div class="bottom-page-dots">
+            <span class="red"></span>
+            <span class="green"></span>
+            <span class="blue"></span>
+            <span class="yellow"></span>
+            <span class="white"></span>
+            <span class="purple"></span>
+            <span class="orange"></span>
+            <span class="red"></span>
+            <span class="green"></span>
+        </div>
+
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- ไฟล์สคริปต์ -->
+    <script src="script.js"></script>
+
+</body>
+
+</html>

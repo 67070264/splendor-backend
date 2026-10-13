@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ล็อกอิน</title>
+
+    <!-- ==============================
+         จุดใส่ฟอนต์
+         ถ้าใช้ Google Font หรือฟอนต์อื่น
+         สามารถใส่ link ตรงนี้ได้
+         ============================== -->
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="page">
+
+        <!-- จุดตกแต่งด้านบน -->
+        <div class="dots top-left">
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+            <span class="purple"></span>
+            <span class="yellow"></span>
+        </div>
+
+        <div class="dots top-right">
+            <span class="orange"></span>
+            <span class="yellow"></span>
+            <span class="green"></span>
+            <span class="orange"></span>
+            <span class="blue"></span>
+        </div>
+
+        <!-- จุดตกแต่งด้านข้าง -->
+        <div class="side-dots left-dots">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+        </div>
+
+        <div class="side-dots right-dots">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+            <img src="diamond.png">
+        </div>
+
+
+        <!-- กล่องหลัก -->
+        <div class="main-box">
+
+            <!-- ==============================
+                 ฝั่งรูปภาพ
+                 เปลี่ยน path รูปตรง src ได้เลย
+                 ============================== -->
+            <div class="image-box">
+
+                <!-- ใส่รูปตรงนี้ -->
+                <img src="img.png" alt="Game Image">
+
+                <!-- จุดตกแต่งมุมรูป -->
+                <span class="corner red"></span>
+                <span class="corner green"></span>
+                <span class="corner blue"></span>
+                <span class="corner yellow"></span>
+
+            </div>
+
+
+            <!-- ==============================
+                 ฝั่ง Login
+                 ============================== -->
+            <div class="login-box">
+
+                <div class="login-content">
+
+                    <!-- จุด 3 สี -->
+                    <div class="title-dots">
+                        <span class="blue"></span>
+                        <span class="purple"></span>
+                        <span class="red"></span>
+                    </div>
+
+                    <h1>ล็อกอิน</h1>
+
+                    
+                    <form id="loginForm">
+
+                        <label for="username">
+                            ชื่อผู้ใช้งาน
+                        </label>
+
+                        <input type="text" id="username" name="username">
+                        <small class="error-message" id="usernameError"></small>
+
+                        <label for="password">
+                            รหัสผ่าน
+                        </label>
+
+                        <input type="password" id="password" name="password">
+                        <small class="error-message" id="passwordError"></small>
+
+                        <div class="forgot">
+                            <a href="#">ลืมรหัสผ่าน ?</a>
+                        </div>
+
+                        <button type="submit">
+                            ล็อกอิน
+
+                            <span class="button-dot red"></span>
+                            <span class="button-dot green"></span>
+                            <span class="button-dot yellow"></span>
+                            <span class="button-dot blue"></span>
+                        </button>
+
+                    </form>
+                    
+
+
+                    <!-- จุดตกแต่ง -->
+                    <div class="bottom-dots">
+                        <span class="red"></span>
+                        <span class="green"></span>
+                        <span class="blue"></span>
+                    </div>
+
+                    <a href="../register/index.html" class="register">
+                        สร้างบัญชีใหม่
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- จุดตกแต่งด้านล่าง -->
+        <div class="bottom-page-dots">
+            <span class="red"></span>
+            <span class="green"></span>
+            <span class="blue"></span>
+            <span class="yellow"></span>
+            <span class="white"></span>
+            <span class="purple"></span>
+            <span class="orange"></span>
+            <span class="red"></span>
+            <span class="green"></span>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+
+</body>
+
+</html>
