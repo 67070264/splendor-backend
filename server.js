@@ -1,21 +1,26 @@
 require('dotenv').config();
 
+
+const path = require('path');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+// ดึงข้อมูลการ์ดและขุนนางจากโฟลเดอร์ data
+const cardsData = require('./data/cards');
+const noblesData = require('./data/nobles');
 // นำเข้า Logic กติกา
 const takeGems = require('./actions/takeGems');
-const buyCard = require('./actions/buyCard'); 
-const reserveCard = require('./actions/reserveCard'); 
+const buyCard = require('./actions/buyCard');
+const reserveCard = require('./actions/reserveCard');
 const nextTurn = require('./actions/nextTurn');
 
-// 🌟 นำเข้าข้อมูลการ์ดและขุนนาง
-const { deckTier1, deckTier2, deckTier3 } = require('./data/cards');
-const noblesData = require('./data/nobles');
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 🌟 ฟังก์ชันสำหรับสับไพ่ (ใช้ Fisher-Yates Algorithm)
+// นำเข้าข้อมูลการ์ดและขุนนาง
+
+// ฟังก์ชันสำหรับสับไพ่
 function shuffle(array) {
     let currentIndex = array.length, randomIndex;
     while (currentIndex !== 0) {
@@ -34,27 +39,48 @@ app.get('/', (req, res) => res.send('🟢 Splendor Server: Online'));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// 🌟 ตัวแปรหลักสำหรับเก็บข้อมูลทุกห้องในเซิร์ฟเวอร์
-const gameRooms = {}; 
+// ตัวแปรหลักสำหรับเก็บข้อมูลทุกห้องในเซิร์ฟเวอร์
+const gameRooms = {};
 
 // ฟังก์ชันสุ่มรหัสห้อง 6 หลัก
 function generateRoomCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// 🌟 ฟังก์ชันกระจายรายการห้องทั้งหมดให้คนหน้า Dashboard เห็นตรงกัน
+function broadcastRoomList() {
+    const roomsList = Object.values(gameRooms)
+        .filter(room => room.status === 'waiting')
+        .map(room => ({
+            code: room.roomId,
+            current_players: room.players.filter(p => p.isConnected).length, // นับเฉพาะคนที่เชื่อมต่อ
+            max_players: room.maxPlayers || 4
+        }));
+
+    // 🌟 พิมพ์ Log แจ้งเตือนว่าเซิร์ฟเวอร์ส่งข้อมูลอะไรไปบ้าง
+    console.log("📢 [Dashboard] ส่งรายการห้องไปที่ล็อบบี้:", roomsList);
+
+    io.emit('roomListUpdate', roomsList);
+}
+
 io.on('connection', (socket) => {
     console.log(`🟢 เชื่อมต่อ: ${socket.id}`);
 
     // ----- [หมวด: จัดการห้อง (Lobby)] -----
-    
-    // 1. สร้างห้องใหม่
-    socket.on('createRoom', (playerName) => {
+
+    socket.on('getRoomList', () => {
+        broadcastRoomList();
+    });
+
+    socket.on('createRoom', (data) => {
+        const playerName = typeof data === 'object' ? data.playerName : data;
+        const maxPlayers = typeof data === 'object' ? (data.maxPlayers || 4) : 4;
         const roomId = generateRoomCode();
-        
-        // สร้างกระดานเริ่มต้นสำหรับห้องนี้ (จำลองข้อมูลไปก่อน เดี๋ยวเรามาทำฟังก์ชันแจกไพ่จริงทีหลัง)
+
         gameRooms[roomId] = {
             roomId: roomId,
-            status: 'waiting', 
+            maxPlayers: maxPlayers,
+            status: 'waiting',
             isLastRound: false,
             currentTurnIndex: 0,
             board: {
@@ -66,10 +92,10 @@ io.on('connection', (socket) => {
             players: []
         };
 
-        // จับคนสร้างเข้าห้องเป็น Player 1
         const newPlayer = {
             id: socket.id,
             name: playerName || "Player 1",
+            isConnected: true, // 🌟 เพิ่มสถานะว่ากำลังเชื่อมต่อ
             score: 0,
             tokens: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0, gold: 0 },
             bonuses: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0 },
@@ -80,165 +106,208 @@ io.on('connection', (socket) => {
 
         socket.join(roomId);
         console.log(`🏠 ${newPlayer.name} สร้างห้อง ${roomId}`);
-        
-        // ส่งรหัสห้องกลับไปให้คนสร้าง
-        socket.emit('roomCreated', { roomId, gameState: gameRooms[roomId] });
+
+        broadcastRoomList();
+        socket.emit('roomCreated', { roomId, playerName: newPlayer.name, gameState: gameRooms[roomId] });
     });
 
-    // 2. เข้าร่วมห้อง
-    socket.on('joinRoom', (data) => {
-        const { roomId, playerName } = data;
+    socket.on('checkActiveGame', (playerName) => {
+        console.log(`🔍 [เช็กเกมค้าง] กำลังค้นหาข้อมูลของ: ${playerName}`);
+        for (const roomId in gameRooms) {
+            const room = gameRooms[roomId];
+
+            // หาว่ามีคนชื่อนี้อยู่ในห้องไหม
+            const playerExists = room.players.some(p => p.name === playerName);
+
+            // เช็กด้วยว่าเป็นห้องที่กำลังเล่นอยู่ (playing) ไม่ใช่ล็อบบี้
+            if (playerExists && room.status === 'playing') {
+                console.log(`✅ [เช็กเกมค้าง] เจอผู้เล่น ${playerName} ในห้อง ${roomId} -> ส่งแจ้งเตือน!`);
+                socket.emit('reconnectGame', roomId);
+                return;
+            }
+        }
+        console.log(`❌ [เช็กเกมค้าง] ไม่พบเกมค้างของ ${playerName}`);
+    });
+
+    // 🌟 ระบบสูตรโกงสำหรับนักพัฒนา (ลบทิ้งก่อนขึ้นระบบจริง)
+    socket.on('devCheat', ({ roomId, playerName, cheatType }) => {
         const room = gameRooms[roomId];
+        if (!room) return;
+        const player = room.players.find(p => p.name === playerName);
+        if (!player) return;
 
-        if (!room) return socket.emit('errorMsg', '❌ ไม่พบห้องเกมนี้');
-        if (room.status !== 'waiting') return socket.emit('errorMsg', '❌ เกมเริ่มไปแล้ว');
-        if (room.players.length >= 4) return socket.emit('errorMsg', '❌ ห้องเต็มแล้ว');
+        if (cheatType === 'testNoble') {
+            // เสกโบนัสการ์ดให้สีละ 4 ใบ (เกินพอสำหรับขุนนางทุกตัว)
+            player.bonuses = { diamond: 4, sapphire: 4, emerald: 4, ruby: 4, onyx: 4 };
+            // เสกเหรียญให้ด้วย จะได้กดซื้อการ์ดเพื่อทริกเกอร์ขุนนางได้เลย
+            player.tokens = { diamond: 5, sapphire: 5, emerald: 5, ruby: 5, onyx: 5, gold: 5 };
+            console.log(`🛠️ [DEV] เสกโบนัสเตรียมรับขุนนางให้ ${playerName}`);
+        }
+        else if (cheatType === 'testEndgame') {
+            // เสกแต้มให้ 14 คะแนน (ซื้อการ์ดอีกใบเดียวจบเกม)
+            player.score = 14;
+            player.tokens = { diamond: 7, sapphire: 7, emerald: 7, ruby: 7, onyx: 7, gold: 5 };
+            console.log(`🛠️ [DEV] เสกแต้ม 14 คะแนนให้ ${playerName}`);
+        }
 
-        const newPlayer = {
-            id: socket.id,
-            name: playerName || `Player ${room.players.length + 1}`,
-            score: 0,
-            tokens: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0, gold: 0 },
-            bonuses: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0 },
-            nobles: [],
-            reservedCards: []
-        };
-        
-        room.players.push(newPlayer);
-        socket.join(roomId);
-        console.log(`🚶‍♂️ ${newPlayer.name} เข้าห้อง ${roomId}`);
-
-        // 🌟 สำคัญ: ใช้ io.to(roomId) เพื่อส่งอัปเดตให้เฉพาะคนในห้องนี้เห็นว่ามีคนเข้าใหม่
-        io.to(roomId).emit('updateBoard', room); 
+        // สั่งอัปเดตกระดานทุกคนทันที
+        io.to(roomId).emit('updateBoard', room);
     });
 
-    // 🌟 3. เริ่มเกม (แจกไพ่, สุ่มขุนนาง, เซ็ตเหรียญ)
+    socket.on('joinRoom', ({ roomId, playerName }) => {
+        const room = gameRooms[roomId];
+        if (!room) {
+            socket.emit('errorMsg', 'ไม่พบห้องนี้ หรือห้องถูกปิดไปแล้ว');
+            return;
+        }
+
+        // 🌟 ค้นหาว่ามีชื่อผู้เล่นนี้อยู่ในห้องอยู่แล้วหรือไม่ (กรณีรีคอนเนค)
+        const existingPlayer = room.players.find(p => p.name === playerName);
+
+        if (existingPlayer) {
+            // ถ้าเป็นคนเดิมกลับมา ให้อัปเดต Socket ID ใหม่ และแจ้งว่าออนไลน์แล้ว
+            existingPlayer.id = socket.id;
+            existingPlayer.isConnected = true;
+            socket.join(roomId);
+            console.log(`🔄 ${playerName} Reconnect กลับเข้าห้อง ${roomId}`);
+        } else {
+            // ถ้าเป็นคนใหม่ และห้องยังไม่เต็ม และยังไม่เริ่มเกม ถึงจะให้เข้าได้
+            if (room.status === 'playing') {
+                socket.emit('errorMsg', 'เกมนี้เริ่มไปแล้ว ไม่สามารถเข้าร่วมได้');
+                return;
+            }
+            if (room.players.length >= room.maxPlayers) {
+                socket.emit('errorMsg', 'ห้องเต็มแล้ว');
+                return;
+            }
+
+            // เพิ่มผู้เล่นใหม่
+            room.players.push({
+                id: socket.id,
+                name: playerName,
+                isConnected: true,
+                score: 0,
+                tokens: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0, gold: 0 },
+                bonuses: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0 },
+                reservedCards: [],
+                cards: [],
+                nobles: []
+            });
+            socket.join(roomId);
+            console.log(`🟢 ${playerName} เข้าร่วมห้อง ${roomId}`);
+        }
+
+        io.to(roomId).emit('updateBoard', room);
+        broadcastRoomList();
+    });
+
     socket.on('startGame', (roomId) => {
         const room = gameRooms[roomId];
-        
+
         if (!room) return socket.emit('errorMsg', '❌ ไม่พบห้อง');
         if (room.status !== 'waiting') return socket.emit('errorMsg', '❌ เกมเริ่มไปแล้ว');
-        if (room.players.length < 2) return socket.emit('errorMsg', '❌ ต้องมีผู้เล่นอย่างน้อย 2 คนถึงจะเริ่มเกมได้');
+        if (room.players.length < 2) return socket.emit('errorMsg', '❌ ต้องมีผู้เล่นอย่างน้อย 2 คน');
 
         room.status = 'playing';
 
-        // 3.1 กำหนดจำนวนเหรียญกองกลางตามจำนวนผู้เล่น (2 คน=4, 3 คน=5, 4 คน=7)
         const playerCount = room.players.length;
         let tokenCount = 7;
         if (playerCount === 2) tokenCount = 4;
         if (playerCount === 3) tokenCount = 5;
 
-        room.board.tokens = { 
-            diamond: tokenCount, sapphire: tokenCount, emerald: tokenCount, 
-            ruby: tokenCount, onyx: tokenCount, gold: 5 
+        // เตรียมเหรียญ
+        room.board.tokens = {
+            diamond: tokenCount, sapphire: tokenCount, emerald: tokenCount,
+            ruby: tokenCount, onyx: tokenCount, gold: 5
         };
 
-        // 3.2 สับไพ่ทั้งหมด (ต้องใส่ [...] เพื่อ Copy ข้อมูล ไม่ให้กระทบห้องอื่น)
-        room.board.decks.tier1 = shuffle([...deckTier1]);
-        room.board.decks.tier2 = shuffle([...deckTier2]);
-        room.board.decks.tier3 = shuffle([...deckTier3]);
-        
-        // 3.3 สุ่มขุนนาง จำนวน = ผู้เล่น + 1
+        // 🌟 ดึงข้อมูลจาก Data ของจริงมาสับไพ่
+        // (ให้แน่ใจว่าคุณได้ตั้งตัวแปร cardsData และ noblesData ตามที่บอกไปก่อนหน้านี้)
+        // เปลี่ยนจาก cardsData.tier1 เป็น cardsData.deckTier1 ให้ตรงกับชื่อในรูป
+        room.board.decks.tier1 = shuffle([...cardsData.deckTier1]);
+        room.board.decks.tier2 = shuffle([...cardsData.deckTier2]);
+        room.board.decks.tier3 = shuffle([...cardsData.deckTier3]);
+
+        // 🌟 ดึงข้อมูลขุนนางของจริงมาสับไพ่
         const shuffledNobles = shuffle([...noblesData]);
         room.board.nobles = shuffledNobles.slice(0, playerCount + 1);
 
-        // 3.4 ดึงไพ่ 4 ใบแรกจากกองจั่ว มาวางหงายบนกระดาน
+        // ดึง 4 ใบแรกของแต่ละสำรับไปวางบนกระดาน
         room.board.cardsOnBoard.tier1 = room.board.decks.tier1.splice(0, 4);
         room.board.cardsOnBoard.tier2 = room.board.decks.tier2.splice(0, 4);
         room.board.cardsOnBoard.tier3 = room.board.decks.tier3.splice(0, 4);
 
         console.log(`🎲 ห้อง ${roomId} เริ่มเกมแล้ว!`);
-        
-        // ประกาศบอกทุกคนในห้องว่ากระดานพร้อมแล้ว!
+
+        broadcastRoomList(); // สั่งลบห้องออกจาก Dashboard
         io.to(roomId).emit('updateBoard', room);
         io.to(roomId).emit('gameStarted', 'เกมเริ่มแล้ว! ลุยเลย!');
     });
 
-    // ----- [หมวด: แอ็กชันกติกาเกม (แก้ให้ใช้ RoomId)] -----
-    
+    // ----- [หมวด: แอ็กชันกติกาเกม] -----
     socket.on('playerTakeGems', (data) => {
         const room = gameRooms[data.roomId];
-        if (!room) return socket.emit('errorMsg', 'Session หมดอายุ');
-        
-        const result = takeGems(room, data.playerId, data.selectedGems);
-        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState); 
+        if (!room) return;
+        const result = takeGems(room, socket.id, data.selectedGems);
+        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState);
         else socket.emit('errorMsg', result.message);
     });
 
     socket.on('buyCard', (data) => {
         const room = gameRooms[data.roomId];
         if (!room) return;
-        
-        const result = buyCard(room, data.playerId, data.cardId, data.tier);
-        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState); 
+        const result = buyCard(room, socket.id, data.tier, data.cardIndex, data.isReserved);
+        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState);
         else socket.emit('errorMsg', result.message);
     });
 
     socket.on('reserveCard', (data) => {
         const room = gameRooms[data.roomId];
         if (!room) return;
-
-        const result = reserveCard(room, data.playerId, data.cardId, data.tier);
-        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState); 
+        const result = reserveCard(room, socket.id, data.tier, data.cardIndex);
+        if (result.success) io.to(data.roomId).emit('updateBoard', result.gameState);
         else socket.emit('errorMsg', result.message);
     });
 
-    socket.on('forceWin', (roomId) => {
-        const room = gameRooms[roomId];
-        if (!room) return;
-        
-        const player = room.players.find(p => p.id === socket.id);
-        if (player) {
-            player.score = 15; // เสก 15 แต้มทันที
-            console.log(`🔥 ${player.name} ใช้สูตรโกงคะแนนเต็ม 15!`);
-            
-            // เรียกฟังก์ชันเปลี่ยนเทิร์น (เพื่อเช็กเงื่อนไขจบเกม)
-            nextTurn(room);
-            io.to(roomId).emit('updateBoard', room); 
-            
-            // ดักเงื่อนไขจบเกมเหมือนตอนซื้อการ์ด
-            if (room.status === "finished") {
-                console.log(`🏆 ห้อง ${roomId} เล่นจบแล้ว!`);
-                io.to(roomId).emit('gameOver', room); 
-                
-                // เรียกใช้ฟังก์ชันเซฟลงฐานข้อมูลที่ดึงมาจาก db.js
-                const { saveMatchHistory } = require('./db');
-                saveMatchHistory(room); 
-                
-                delete gameRooms[roomId]; 
-            }
-        }
-    });
-
+    // 🌟 ระบบตัดการเชื่อมต่อใหม่ (ไม่เตะคนผิด)
     socket.on('disconnect', () => {
-        console.log(`🔴 หลุดการเชื่อมต่อ: ${socket.id}`);
-        // วนลูปหาว่าคนที่หลุด ซ่อนอยู่ในห้องไหน
+        console.log('🔴 คอนเนคชั่นหลุด:', socket.id);
         for (const roomId in gameRooms) {
             const room = gameRooms[roomId];
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
-            
-            // ถ้าเจอตัวคนหลุดในห้องนี้
+
             if (playerIndex !== -1) {
-                const playerName = room.players[playerIndex].name;
-                
-                // 1. ลบผู้เล่นคนนั้นออกจาก Array
-                room.players.splice(playerIndex, 1);
-                console.log(`👋 ${playerName} หลุดออกจากห้อง ${roomId}`);
-                
-                // 2. เช็กว่าห้องว่างไหม ถ้าว่างให้ลบห้องทิ้งเพื่อคืน RAM ให้เซิร์ฟเวอร์
-                if (room.players.length === 0) {
-                    delete gameRooms[roomId];
-                    console.log(`🗑️ ลบห้อง ${roomId} ทิ้งเพราะไม่มีคนอยู่แล้ว`);
-                } else {
-                    // 3. ถ้ายังมีคนเหลืออยู่ ให้อัปเดตกระดานใหม่ และแจ้งเตือนคนที่เหลือ
-                    io.to(roomId).emit('updateBoard', room);
-                    io.to(roomId).emit('errorMsg', `⚠️ ${playerName} หลุดออกจากห้อง`);
+                // เปลี่ยนสถานะเป็นหลุดการเชื่อมต่อ แต่ยังไม่ลบข้อมูลทิ้ง
+                room.players[playerIndex].isConnected = false;
+
+                // 🌟 หัวใจสำคัญ: ถ้ายังอยู่ในล็อบบี้ (รอคน) ให้เตะออกได้
+                // แต่ถ้าเกมเริ่มไปแล้ว (playing) ห้ามลบทิ้งเด็ดขาด!
+                if (room.status === 'waiting') {
+                    room.players.splice(playerIndex, 1);
                 }
-                break; // ทำงานเสร็จแล้ว ออกจากลูปได้เลย
+
+                // ถ้าคนออกหมดห้อง ค่อยลบห้องทิ้ง (หน่วงเวลา 1 นาทีเผื่อเน็ตกระตุก)
+                setTimeout(() => {
+                    if (gameRooms[roomId]) {
+                        const activePlayers = gameRooms[roomId].players.filter(p => p.isConnected);
+                        if (activePlayers.length === 0) {
+                            delete gameRooms[roomId];
+                            console.log(`🗑️ ลบห้อง ${roomId} ทิ้งเพราะไม่มีคนอยู่แล้ว`);
+                        }
+                    }
+                    broadcastRoomList();
+                }, 60000);
+
+                // แจ้งเตือนคนในห้องที่เหลือว่ามีคนหลุด
+                io.to(roomId).emit('updateBoard', room);
+                break;
             }
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Game Server รันอยู่บนพอร์ต ${PORT}`));
+
+server.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+});

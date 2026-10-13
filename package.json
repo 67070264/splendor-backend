@@ -2,10 +2,11 @@
   "name": "splendor-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -20,8 +21,7 @@
   },
   "homepage": "https://github.com/67070264/splendor-backend#readme",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1146.0",
-    "@aws-sdk/lib-dynamodb": "^3.1146.0",
+    "@supabase/supabase-js": "^2.117.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
