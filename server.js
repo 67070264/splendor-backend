@@ -33,7 +33,10 @@ function shuffle(array) {
 
 app.use(cors());
 
-app.get('/', (req, res) => res.send('🟢 Splendor Server: Online'));
+app.get('/', (req, res) => {
+    // สั่ง Redirect ให้วิ่งไปหาไฟล์หน้า Login โดยตรง
+    res.redirect('/splendor-frontend/login/index.html'); 
+});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
