@@ -16,9 +16,80 @@ const reserveCard = require('./actions/reserveCard');
 const nextTurn = require('./actions/nextTurn');
 const app = express();
 
-app.use(express.static(path.join(__dirname, 'public')));
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 
-// นำเข้าข้อมูลการ์ดและขุนนาง
+// 🌟 ย้าย CORS ขึ้นมาไว้บนสุด เพื่อให้ Amplify ยิง API ข้ามโดเมนมาที่ EC2 ได้
+app.use(cors());
+// บังคับให้ Express อ่านข้อมูล JSON ที่ส่งมาจาก Frontend ได้
+app.use(express.json());
+
+// ตั้งค่าเชื่อมต่อ DynamoDB (Region ต้องตรงกับที่ทีมคลาวด์สร้างไว้)
+const client = new DynamoDBClient({ region: "ap-southeast-1" });
+const docClient = DynamoDBDocumentClient.from(client);
+
+// ---------------------------------------------------------
+// 🌟 API สำหรับสมัครสมาชิก (Register)
+// ---------------------------------------------------------
+app.post('/api/register', async (req, res) => {
+    const { email, password, playerName } = req.body;
+
+    try {
+        // เช็กก่อนว่ามีอีเมลนี้ในระบบหรือยัง
+        const checkCommand = new GetCommand({
+            TableName: "SplendorUsers",
+            Key: { email: email }
+        });
+        const existingUser = await docClient.send(checkCommand);
+
+        if (existingUser.Item) {
+            return res.status(400).json({ error: "อีเมลนี้เคยลงทะเบียนไว้แล้ว" });
+        }
+
+        // บันทึกผู้ใช้ใหม่ลง DynamoDB
+        const putCommand = new PutCommand({
+            TableName: "SplendorUsers",
+            Item: {
+                email: email,
+                password: password, // โปรเจกต์จริงควรเข้ารหัส (Hash) ก่อนเก็บ
+                playerName: playerName
+            }
+        });
+        await docClient.send(putCommand);
+        res.status(200).json({ message: "Register Success" });
+    } catch (error) {
+        console.error("DynamoDB Register Error:", error);
+        res.status(500).json({ error: "Failed to register" });
+    }
+});
+
+// ---------------------------------------------------------
+// 🌟 API สำหรับเข้าสู่ระบบ (Login)
+// ---------------------------------------------------------
+app.post('/api/login', async (req, res) => {
+    const { identifier, password } = req.body; // identifier คือ อีเมลหรือชื่อผู้ใช้
+
+    try {
+        const command = new GetCommand({
+            TableName: "SplendorUsers",
+            Key: { email: identifier } // ค้นหาด้วยอีเมล
+        });
+
+        const response = await docClient.send(command);
+        const user = response.Item;
+
+        if (user && user.password === password) {
+            res.status(200).json({ message: "Login Success", playerName: user.playerName });
+        } else {
+            res.status(401).json({ error: "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง" });
+        }
+    } catch (error) {
+        console.error("DynamoDB Login Error:", error);
+        res.status(500).json({ error: "Failed to login" });
+    }
+});
+
+// ❌ ลบ app.use(express.static(...)) และ app.get('/', ...) ทิ้งไปเรียบร้อยแล้ว
 
 // ฟังก์ชันสำหรับสับไพ่
 function shuffle(array) {
@@ -30,13 +101,6 @@ function shuffle(array) {
     }
     return array;
 }
-
-app.use(cors());
-
-app.get('/', (req, res) => {
-    // สั่ง Redirect ให้วิ่งไปหาไฟล์หน้า Login โดยตรง
-    res.redirect('/splendor-frontend/login/index.html'); 
-});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -59,9 +123,7 @@ function broadcastRoomList() {
             max_players: room.maxPlayers || 4
         }));
 
-    // 🌟 พิมพ์ Log แจ้งเตือนว่าเซิร์ฟเวอร์ส่งข้อมูลอะไรไปบ้าง
     console.log("📢 [Dashboard] ส่งรายการห้องไปที่ล็อบบี้:", roomsList);
-
     io.emit('roomListUpdate', roomsList);
 }
 
@@ -97,7 +159,7 @@ io.on('connection', (socket) => {
         const newPlayer = {
             id: socket.id,
             name: playerName || "Player 1",
-            isConnected: true, // 🌟 เพิ่มสถานะว่ากำลังเชื่อมต่อ
+            isConnected: true,
             score: 0,
             tokens: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0, gold: 0 },
             bonuses: { diamond: 0, sapphire: 0, emerald: 0, ruby: 0, onyx: 0 },
@@ -117,11 +179,8 @@ io.on('connection', (socket) => {
         console.log(`🔍 [เช็กเกมค้าง] กำลังค้นหาข้อมูลของ: ${playerName}`);
         for (const roomId in gameRooms) {
             const room = gameRooms[roomId];
-
-            // หาว่ามีคนชื่อนี้อยู่ในห้องไหม
             const playerExists = room.players.some(p => p.name === playerName);
 
-            // เช็กด้วยว่าเป็นห้องที่กำลังเล่นอยู่ (playing) ไม่ใช่ล็อบบี้
             if (playerExists && room.status === 'playing') {
                 console.log(`✅ [เช็กเกมค้าง] เจอผู้เล่น ${playerName} ในห้อง ${roomId} -> ส่งแจ้งเตือน!`);
                 socket.emit('reconnectGame', roomId);
@@ -138,17 +197,14 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 🌟 ค้นหาว่ามีชื่อผู้เล่นนี้อยู่ในห้องอยู่แล้วหรือไม่ (กรณีรีคอนเนค)
         const existingPlayer = room.players.find(p => p.name === playerName);
 
         if (existingPlayer) {
-            // ถ้าเป็นคนเดิมกลับมา ให้อัปเดต Socket ID ใหม่ และแจ้งว่าออนไลน์แล้ว
             existingPlayer.id = socket.id;
             existingPlayer.isConnected = true;
             socket.join(roomId);
             console.log(`🔄 ${playerName} Reconnect กลับเข้าห้อง ${roomId}`);
         } else {
-            // ถ้าเป็นคนใหม่ และห้องยังไม่เต็ม และยังไม่เริ่มเกม ถึงจะให้เข้าได้
             if (room.status === 'playing') {
                 socket.emit('errorMsg', 'เกมนี้เริ่มไปแล้ว ไม่สามารถเข้าร่วมได้');
                 return;
@@ -158,7 +214,6 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // เพิ่มผู้เล่นใหม่
             room.players.push({
                 id: socket.id,
                 name: playerName,
@@ -192,31 +247,25 @@ io.on('connection', (socket) => {
         if (playerCount === 2) tokenCount = 4;
         if (playerCount === 3) tokenCount = 5;
 
-        // เตรียมเหรียญ
         room.board.tokens = {
             diamond: tokenCount, sapphire: tokenCount, emerald: tokenCount,
             ruby: tokenCount, onyx: tokenCount, gold: 5
         };
 
-        // 🌟 ดึงข้อมูลจาก Data ของจริงมาสับไพ่
-        // (ให้แน่ใจว่าคุณได้ตั้งตัวแปร cardsData และ noblesData ตามที่บอกไปก่อนหน้านี้)
-        // เปลี่ยนจาก cardsData.tier1 เป็น cardsData.deckTier1 ให้ตรงกับชื่อในรูป
         room.board.decks.tier1 = shuffle([...cardsData.deckTier1]);
         room.board.decks.tier2 = shuffle([...cardsData.deckTier2]);
         room.board.decks.tier3 = shuffle([...cardsData.deckTier3]);
 
-        // 🌟 ดึงข้อมูลขุนนางของจริงมาสับไพ่
         const shuffledNobles = shuffle([...noblesData]);
         room.board.nobles = shuffledNobles.slice(0, playerCount + 1);
 
-        // ดึง 4 ใบแรกของแต่ละสำรับไปวางบนกระดาน
         room.board.cardsOnBoard.tier1 = room.board.decks.tier1.splice(0, 4);
         room.board.cardsOnBoard.tier2 = room.board.decks.tier2.splice(0, 4);
         room.board.cardsOnBoard.tier3 = room.board.decks.tier3.splice(0, 4);
 
         console.log(`🎲 ห้อง ${roomId} เริ่มเกมแล้ว!`);
 
-        broadcastRoomList(); // สั่งลบห้องออกจาก Dashboard
+        broadcastRoomList(); 
         io.to(roomId).emit('updateBoard', room);
         io.to(roomId).emit('gameStarted', 'เกมเริ่มแล้ว! ลุยเลย!');
     });
@@ -246,7 +295,6 @@ io.on('connection', (socket) => {
         else socket.emit('errorMsg', result.message);
     });
 
-    // 🌟 ระบบตัดการเชื่อมต่อใหม่ (ไม่เตะคนผิด)
     socket.on('disconnect', () => {
         console.log('🔴 คอนเนคชั่นหลุด:', socket.id);
         for (const roomId in gameRooms) {
@@ -254,16 +302,12 @@ io.on('connection', (socket) => {
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
 
             if (playerIndex !== -1) {
-                // เปลี่ยนสถานะเป็นหลุดการเชื่อมต่อ แต่ยังไม่ลบข้อมูลทิ้ง
                 room.players[playerIndex].isConnected = false;
 
-                // 🌟 หัวใจสำคัญ: ถ้ายังอยู่ในล็อบบี้ (รอคน) ให้เตะออกได้
-                // แต่ถ้าเกมเริ่มไปแล้ว (playing) ห้ามลบทิ้งเด็ดขาด!
                 if (room.status === 'waiting') {
                     room.players.splice(playerIndex, 1);
                 }
 
-                // ถ้าคนออกหมดห้อง ค่อยลบห้องทิ้ง (หน่วงเวลา 1 นาทีเผื่อเน็ตกระตุก)
                 setTimeout(() => {
                     if (gameRooms[roomId]) {
                         const activePlayers = gameRooms[roomId].players.filter(p => p.isConnected);
@@ -275,7 +319,6 @@ io.on('connection', (socket) => {
                     broadcastRoomList();
                 }, 60000);
 
-                // แจ้งเตือนคนในห้องที่เหลือว่ามีคนหลุด
                 io.to(roomId).emit('updateBoard', room);
                 break;
             }

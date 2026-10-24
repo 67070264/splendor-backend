@@ -1,16 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. ตั้งค่า Supabase (นำ anon key ภาษาอังกฤษมาใส่)
-    const SUPABASE_URL = 'https://aatwzzxgsxbyjkmudaua.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_wEctXOLBK4CScL-GzWRpfg_xa0drqn3'; 
-
-    let supabaseClient = null;
-    try {
-        if (typeof supabase !== 'undefined') {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-    } catch (e) {
-        console.error("Supabase Connection Error:", e);
-    }
+    // 🌟 กำหนด URL ของ Backend (ให้ทีมคลาวด์นำ IP หรือ Domain ของ Load Balancer มาใส่แทนเมื่อขึ้นระบบจริง)
+    const SERVER_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : 'http://<IP_ของ_Load_Balancer>:3000';
 
     const registerForm = document.getElementById("registerForm");
     const username = document.getElementById("username");
@@ -86,36 +78,36 @@ document.addEventListener("DOMContentLoaded", function () {
         // หากมีจุดผิดพลาด ให้หยุดทำงาน
         if (!isValid) return;
 
-        // --- ส่งข้อมูลไป Supabase ---
-        if (!supabaseClient) {
-            if (passwordError) passwordError.textContent = "กรุณาใส่ API Key ของ Supabase ให้ถูกต้อง";
-            return;
-        }
-
+        // --- ส่งข้อมูลไปที่ Backend (API ของเราเอง) ---
         try {
-            const { data, error } = await supabaseClient.auth.signUp({
-                email: emailVal,
-                password: passwordVal,
-                options: {
-                    data: { username: usernameVal }
-                }
+            const response = await fetch(`${SERVER_URL}/api/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: emailVal, 
+                    password: passwordVal, 
+                    playerName: usernameVal 
+                })
             });
 
-            if (error) {
-                if (error.message.includes("User already registered") || error.status === 422) {
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (data.error && data.error.includes("already registered")) {
                     if (email) email.classList.add("input-error");
                     if (emailError) emailError.textContent = "อีเมลนี้เคยลงทะเบียนไว้แล้ว";
                 } else {
                     if (password) password.classList.add("input-error");
-                    if (passwordError) passwordError.textContent = error.message;
+                    if (passwordError) passwordError.textContent = data.error || "เกิดข้อผิดพลาดในการลงทะเบียน";
                 }
                 return;
             }
 
-            if (data.user) {
-                window.location.href = "../login/index.html";
-            }
+            // ถ้าสมัครสำเร็จ ให้เด้งไปหน้า Login
+            window.location.href = "../login/index.html";
+            
         } catch (err) {
+            console.error("Register Error:", err);
             if (passwordError) passwordError.textContent = "เกิดข้อผิดพลาด ไม่สามารถเชื่อมต่อระบบได้";
         }
     });

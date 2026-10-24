@@ -1,13 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const SUPABASE_URL = 'https://aatwzzxgsxbyjkmudaua.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_wEctXOLBK4CScL-GzWRpfg_xa0drqn3';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const loginForm = document.getElementById("loginForm");
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const usernameError = document.getElementById("usernameError");
     const passwordError = document.getElementById("passwordError");
+
+    // 🌟 กำหนด URL ของ Backend (ให้ทีมคลาวด์นำ IP หรือ Domain ของ Load Balancer มาใส่แทนเมื่อขึ้นระบบจริง)
+    const SERVER_URL = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : 'http://<IP_ของ_Load_Balancer>:3000';
 
     if (!loginForm) return;
 
@@ -25,34 +26,27 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        let loginEmail = inputVal;
+        try {
+            // ยิงข้อมูลไปที่ API ของ Backend แทน Supabase
+            const response = await fetch(`${SERVER_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // ส่ง inputVal ไปตรงๆ ให้ Backend จัดการเช็กเองว่าเป็น Email หรือ Username
+                body: JSON.stringify({ identifier: inputVal, password: passwordVal })
+            });
 
-        if (!inputVal.includes("@")) {
-            const { data: foundEmail, error: rpcError } = await supabaseClient
-                .rpc('get_email_by_username', { username_input: inputVal });
+            const data = await response.json();
 
-            if (rpcError || !foundEmail) {
-                if (usernameError) usernameError.textContent = "ไม่พบชื่อผู้ใช้นี้ในระบบ";
-                return;
+            if (response.ok) {
+                // บันทึกชื่อผู้เล่นที่ Backend ส่งกลับมา แล้วเปลี่ยนหน้าไปที่ Dashboard
+                localStorage.setItem("playerName", data.playerName);
+                window.location.href = "../dashboard/index.html"; 
+            } else {
+                if (usernameError) usernameError.textContent = data.error || "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง";
             }
-            loginEmail = foundEmail;
-        }
-
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: loginEmail,
-            password: passwordVal,
-        });
-
-        if (error) {
-            if (usernameError) usernameError.textContent = "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง";
-        } else if (data.user) {
-            let validPlayerName = inputVal;
-            if (inputVal.includes("@")) {
-                validPlayerName = inputVal.split("@")[0];
-            }
-            
-            localStorage.setItem("playerName", validPlayerName);
-            window.location.href = "../dashboard/index.html"; 
+        } catch (error) {
+            console.error("Login Error:", error);
+            if (usernameError) usernameError.textContent = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
         }
     });
 });
