@@ -2,7 +2,7 @@ const myName = localStorage.getItem("playerName");
 if (!myName || myName === "undefined" || myName === "null") {
     alert("กรุณาล็อกอินก่อนเข้าสู่ระบบ");
     localStorage.removeItem("playerName");
-    window.location.href = "../login/index.html";
+    window.location.href = "/splendor-frontend/Main%20Game%20%26%20WIn%20Page/gem_dominion.html";
 }
 
 const socket = io();

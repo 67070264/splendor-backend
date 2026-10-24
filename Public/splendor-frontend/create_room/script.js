@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!myName || myName === "undefined" || myName === "null") {
         alert("กรุณาล็อกอินเพื่อสร้างห้อง");
         localStorage.removeItem("playerName");
-        window.location.href = "../login/index.html";
+        window.location.href = "/splendor-frontend/Main%20Game%20%26%20WIn%20Page/gem_dominion.html";
         return;
     }
 
