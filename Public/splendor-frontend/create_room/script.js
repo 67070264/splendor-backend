@@ -13,12 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedPlayers = 4;
 
 
-    const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-
-    // 🌟 ให้ทีมคลาวด์เอา IP ของ EC2 หรือ Domain มาใส่ตรง YOUR_AWS_IP
-    const SERVER_URL = isLocal ? 'http://localhost:3000' : 'http://YOUR_AWS_IP:3000';
-
-    const socket = io(SERVER_URL);
+    const socket = io();
 
     playerCards.forEach(function (card) {
         card.addEventListener("click", function () {
