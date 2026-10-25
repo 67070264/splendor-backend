@@ -1,11 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const SUPABASE_URL = 'https://aatwzzxgsxbyjkmudaua.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_wEctXOLBK4CScL-GzWRpfg_xa0drqn3';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const loginForm = document.getElementById("loginForm");
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
+    const username = document.getElementById("username");
+    const password = document.getElementById("password");
     const usernameError = document.getElementById("usernameError");
     const passwordError = document.getElementById("passwordError");
 
@@ -14,45 +10,76 @@ document.addEventListener("DOMContentLoaded", function () {
     loginForm.addEventListener("submit", async function (event) {
         event.preventDefault();
 
+        const identifier = username?.value.trim() || "";
+        const passwordVal = password?.value || "";
+
         if (usernameError) usernameError.textContent = "";
         if (passwordError) passwordError.textContent = "";
+        username?.classList.remove("input-error");
+        password?.classList.remove("input-error");
 
-        const inputVal = usernameInput.value.trim();
-        const passwordVal = passwordInput.value;
+        let isValid = true;
 
-        if (inputVal === "" || passwordVal === "") {
-            if (usernameError) usernameError.textContent = "กรุณากรอกชื่อผู้ใช้/อีเมล และรหัสผ่าน";
-            return;
+        if (!identifier) {
+            if (usernameError) usernameError.textContent = "กรุณากรอกชื่อผู้ใช้หรืออีเมล";
+            username?.classList.add("input-error");
+            isValid = false;
         }
 
-        let loginEmail = inputVal;
+        if (!passwordVal) {
+            if (passwordError) passwordError.textContent = "กรุณากรอกรหัสผ่าน";
+            password?.classList.add("input-error");
+            isValid = false;
+        }
 
-        if (!inputVal.includes("@")) {
-            const { data: foundEmail, error: rpcError } = await supabaseClient
-                .rpc('get_email_by_username', { username_input: inputVal });
+        if (!isValid) return;
 
-            if (rpcError || !foundEmail) {
-                if (usernameError) usernameError.textContent = "ไม่พบชื่อผู้ใช้นี้ในระบบ";
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+            const response = await fetch(`${window.location.origin}/api/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    identifier,
+                    password: passwordVal
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    if (passwordError) {
+                        passwordError.textContent = "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง";
+                    }
+                    password?.classList.add("input-error");
+                } else {
+                    if (passwordError) {
+                        passwordError.textContent = result.error || "เข้าสู่ระบบไม่สำเร็จ";
+                    }
+                }
                 return;
             }
-            loginEmail = foundEmail;
-        }
 
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: loginEmail,
-            password: passwordVal,
-        });
-
-        if (error) {
-            if (usernameError) usernameError.textContent = "ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง";
-        } else if (data.user) {
-            let validPlayerName = inputVal;
-            if (inputVal.includes("@")) {
-                validPlayerName = inputVal.split("@")[0];
+            localStorage.setItem("playerName", result.playerName);
+            window.location.href = "../dashboard/index.html";
+        } catch (error) {
+            console.error("Login API error:", error);
+            if (passwordError) {
+                passwordError.textContent = "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่";
             }
-            
-            localStorage.setItem("playerName", validPlayerName);
-            window.location.href = "../dashboard/index.html"; 
+        } finally {
+            if (submitButton) submitButton.disabled = false;
         }
+    });
+
+    [username, password].forEach((input) => {
+        input?.addEventListener("input", () => {
+            input.classList.remove("input-error");
+            if (input === username && usernameError) usernameError.textContent = "";
+            if (input === password && passwordError) passwordError.textContent = "";
+        });
     });
 });

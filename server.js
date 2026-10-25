@@ -5,6 +5,14 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const bcrypt = require('bcryptjs');
+
+const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
+const db = DynamoDBDocumentClient.from(dynamoClient);
+const USERS_TABLE = 'SplendorUsers';
+
 
 // ดึงข้อมูลการ์ดและขุนนางจากโฟลเดอร์ data
 const cardsData = require('./data/cards');
@@ -16,7 +24,7 @@ const reserveCard = require('./actions/reserveCard');
 const nextTurn = require('./actions/nextTurn');
 const app = express();
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'Public')));
 
 // นำเข้าข้อมูลการ์ดและขุนนาง
 
@@ -32,11 +40,119 @@ function shuffle(array) {
 }
 
 app.use(cors());
+app.use(express.json());
 
 app.get('/', (req, res) => {
     // สั่ง Redirect ให้วิ่งไปหาไฟล์หน้า Login โดยตรง
     res.redirect('/splendor-frontend/login/index.html'); 
 });
+
+app.use('/splendor-frontend', express.static(path.join(__dirname, 'Public/splendor-frontend')));
+
+
+// ===== User API: DynamoDB =====
+app.post('/api/register', async (req, res) => {
+    try {
+        const email = String(req.body.email || '').trim().toLowerCase();
+        const playerName = String(req.body.playerName || '').trim();
+        const password = String(req.body.password || '');
+
+        if (!email || !playerName || password.length < 6) {
+            return res.status(400).json({
+                error: 'กรุณากรอกอีเมล ชื่อผู้ใช้ และรหัสผ่านอย่างน้อย 6 ตัวอักษร'
+            });
+        }
+
+        const existing = await db.send(new GetCommand({
+            TableName: USERS_TABLE,
+            Key: { email }
+        }));
+
+        if (existing.Item) {
+            return res.status(409).json({ error: 'Email already registered' });
+        }
+
+        // ตรวจสอบชื่อผู้ใช้ซ้ำ เพื่อให้ล็อกอินด้วยชื่อผู้ใช้ได้ชัดเจน
+        const names = await db.send(new ScanCommand({
+            TableName: USERS_TABLE,
+            ProjectionExpression: 'email, playerName'
+        }));
+        const duplicateName = (names.Items || []).some(
+            user => String(user.playerName || '').toLowerCase() === playerName.toLowerCase()
+        );
+
+        if (duplicateName) {
+            return res.status(409).json({ error: 'Username already registered' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        await db.send(new PutCommand({
+            TableName: USERS_TABLE,
+            Item: {
+                email,
+                playerName,
+                passwordHash,
+                createdAt: new Date().toISOString()
+            },
+            ConditionExpression: 'attribute_not_exists(email)'
+        }));
+
+        return res.status(201).json({
+            success: true,
+            message: 'Registration successful'
+        });
+    } catch (error) {
+        if (error.name === 'ConditionalCheckFailedException') {
+            return res.status(409).json({ error: 'Email already registered' });
+        }
+        console.error('[Register API]', error);
+        return res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const identifier = String(req.body.identifier || '').trim();
+        const password = String(req.body.password || '');
+
+        if (!identifier || !password) {
+            return res.status(400).json({ error: 'กรุณากรอกชื่อผู้ใช้/อีเมลและรหัสผ่าน' });
+        }
+
+        let user;
+
+        if (identifier.includes('@')) {
+            const email = identifier.toLowerCase();
+            const result = await db.send(new GetCommand({
+                TableName: USERS_TABLE,
+                Key: { email }
+            }));
+            user = result.Item;
+        } else {
+            const result = await db.send(new ScanCommand({
+                TableName: USERS_TABLE,
+                ProjectionExpression: 'email, playerName, passwordHash'
+            }));
+            user = (result.Items || []).find(
+                item => String(item.playerName || '').toLowerCase() === identifier.toLowerCase()
+            );
+        }
+
+        if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+            return res.status(401).json({ error: 'Invalid username/email or password' });
+        }
+
+        return res.json({
+            success: true,
+            playerName: user.playerName
+        });
+    } catch (error) {
+        console.error('[Login API]', error);
+        return res.status(500).json({ error: 'Login failed' });
+    }
+});
+// ===== End User API =====
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });

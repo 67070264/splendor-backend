@@ -1,0 +1,48 @@
+:root{
+  --gold:#e3b84f; --gold2:#a87a2a; --ink:#2a1e12; --muted:#bfa985;
+  --serif:'Cinzel','Sarabun',serif; --sans:'Sarabun',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:var(--sans);color:#f4e6c6;background:#0a0705}
+img{display:block;max-width:100%}
+button{font:inherit;cursor:pointer}
+
+.stage{min-height:100vh;display:grid;place-items:center;padding:24px;
+  /* วางรูปพื้นหลังที่ images/bg.jpg ถ้าไม่มีไฟล์ จะเห็นสีไล่เฉดแทน */
+  background:
+    linear-gradient(#000a,#000a),
+    url("images/bg.jpg") center / cover no-repeat fixed,
+    radial-gradient(circle at 50% 45%,#1b4a2e 0,#0f2a1a 50%,#07110b 100%);
+}
+
+.report{width:min(560px,100%);padding:32px 34px 30px;text-align:center;font-size:17px;
+  border:3px solid var(--gold2);border-radius:28px;
+  background:linear-gradient(160deg,#3a2916,#17100a);
+  box-shadow:0 0 0 1px #000,0 0 50px #e3b84f40,0 25px 70px #000}
+h1{margin:0 0 6px;font:800 32px var(--serif);color:#f3d98a;text-shadow:0 2px 0 #000}
+.sub{margin:0;font-size:18px;color:var(--muted)}
+.congrats{margin:8px 0 2px;font:700 32px var(--sans);color:var(--gold)}
+.who{margin:0 0 20px;font-size:19px}
+
+.list{list-style:none;margin:0 auto 22px;padding:0;max-width:440px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:14px;height:48px;padding:0 22px 0 8px;border-radius:30px;
+  color:var(--ink);font-size:18px;text-align:left;
+  background:linear-gradient(#efe3c8,#d6c299);border:2px solid #8a6a3a}
+.row.first{border-color:var(--gold);box-shadow:0 0 16px #e3b84f88}
+.av{flex:none;width:32px;height:32px;border-radius:50%;overflow:hidden;background:#2a1d12;border:2px solid #5b4630}
+.av img{width:100%;height:100%;object-fit:cover}
+.nm{flex:1;font-weight:700}
+.pt{font-weight:700;white-space:nowrap}
+
+.btns{display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn{width:230px;padding:10px;border:1px solid #6b4a2a;border-radius:24px;font-size:16px;font-weight:700;color:#fff;
+  background:linear-gradient(#7d6a56,#51443a)}
+.btn.primary{background:linear-gradient(#e0b254,#a97a26);color:#2a1a07}
+.btn:hover{filter:brightness(1.2)}
+
+@media(max-width:480px){
+  .report{padding:24px 18px;font-size:15px}
+  h1{font-size:24px}.congrats{font-size:24px}
+  .row{font-size:16px}
+}

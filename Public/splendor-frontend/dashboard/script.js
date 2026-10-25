@@ -8,7 +8,7 @@ if (!myName || myName === "undefined" || myName === "null") {
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 
 // 🌟 ให้ทีมคลาวด์เอา IP ของ EC2 หรือ Domain มาใส่ตรง YOUR_AWS_IP
-const SERVER_URL = isLocal ? 'http://localhost:3000' : 'http://YOUR_AWS_IP:3000';
+const SERVER_URL = isLocal ? 'http://localhost:3000' : window.location.origin;
 
 const socket = io(SERVER_URL);
 
@@ -32,7 +32,7 @@ socket.on('reconnectGame', (roomId) => {
         const wantToReconnect = confirm(`ระบบพบว่าคุณมีเกมที่กำลังเล่นค้างอยู่ในห้อง [${roomId}]\nต้องการกลับเข้าสู่เกมเพื่อเล่นต่อหรือไม่?`);
         if (wantToReconnect) {
             localStorage.setItem("roomId", roomId);
-            window.location.href = "../Main Game & Win Page/gem_dominion.html";
+            window.location.href = "../main-game/gem_dominion.html";
         }
     }, 500); // หน่วง 0.5 วินาที
 });
@@ -110,5 +110,5 @@ function attachJoinEvents() {
     });
 }
 
-socket.on("updateBoard", () => window.location.href = "../Main Game & Win Page/gem_dominion.html");
+socket.on("updateBoard", () => window.location.href = "../main-game/gem_dominion.html");
 socket.on("errorMsg", (msg) => alert(msg));
