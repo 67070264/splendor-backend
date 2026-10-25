@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 
     // 🌟 ให้ทีมคลาวด์เอา IP ของ EC2 หรือ Domain มาใส่ตรง YOUR_AWS_IP
-    const SERVER_URL = isLocal ? 'http://localhost:3000' : window.location.origin;
+    const SERVER_URL = window.location.origin;
 
     const socket = io(SERVER_URL);
 
@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.on("roomCreated", (data) => {
         localStorage.setItem("roomId", data.roomId);
         alert(`🎉 สร้างห้องสำเร็จ!\n\nรหัสห้องคือ: ${data.roomId}\n(บอกให้เพื่อนมากด Join ที่หน้า Dashboard นะครับ)`);
-        window.location.href = "../main-game/gem_dominion.html";
+        window.location.href = "/splendor-frontend/main-game/gem_dominion.html";
     });
 
     socket.on("errorMsg", (msg) => alert("ข้อผิดพลาด: " + msg));
